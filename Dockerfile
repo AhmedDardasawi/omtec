@@ -29,52 +29,31 @@ RUN apt-get update && apt-get install -y \
     && rm /tmp/wkhtmltox.deb \
     && rm -rf /var/lib/apt/lists/*
 
-# Install compatible versions
-RUN pip3 install \
-    click==8.1.7 \
-    requests==2.31.0 \
-    jinja2==3.1.2 \
-    honcho==1.1.0 \
-    semantic-version==2.10.0
+# Create a non-root user
+RUN useradd -m -s /bin/bash frappe
+USER frappe
+WORKDIR /home/frappe
 
-# Install available version of frappe-bench
-RUN pip3 install frappe-bench==5.22.8
+# Install bench for the user
+RUN pip3 install --user frappe-bench
 
-# Create app directory
-WORKDIR /opt
+# Add user's local bin to PATH
+ENV PATH="/home/frappe/.local/bin:${PATH}"
 
-# Initialize bench
+# Initialize bench as the user
 RUN bench init frappe-bench --python python3 --skip-assets
 
-WORKDIR /opt/frappe-bench
+WORKDIR /home/frappe/frappe-bench
 
 # Install ERPNext
 RUN bench get-app erpnext https://github.com/frappe/erpnext --branch version-14
 
-# Create startup script
+# Switch back to root for the startup script (if needed, but we'll adjust the startup script to run as frappe)
+USER root
+
+# Create startup script that runs as the frappe user
 RUN printf '#!/bin/bash\n\
-cd /opt/frappe-bench\n\
-\n\
-# Wait for database\n\
-echo "Waiting for database..."\n\
-while ! mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -P $DB_PORT -e "SELECT 1;" > /dev/null 2>&1; do\n\
-  sleep 5\n\
-done\n\
-\n\
-# Create site if not exists\n\
-if [ ! -f sites/.initialized ]; then\n\
-  echo "Creating site: $SITE_NAME"\n\
-  bench new-site $SITE_NAME \\\n\
-    --mariadb-root-password=$DB_PASSWORD \\\n\
-    --admin-password=$ADMIN_PASSWORD \\\n\
-    --force\n\
-  bench --site $SITE_NAME install-app erpnext\n\
-  touch sites/.initialized\n\
-  echo "Site created successfully!"\n\
-fi\n\
-\n\
-echo "Starting ERPNext..."\n\
-bench start\n' > /start.sh
+sudo -u frappe bash -c "cd /home/frappe/frappe-bench && bench start"\n' > /start.sh
 
 RUN chmod +x /start.sh
 
