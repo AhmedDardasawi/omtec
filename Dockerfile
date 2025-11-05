@@ -40,7 +40,7 @@ RUN pip3 install \
 
 # Install frappe-bench from GitHub directly (bypass pip version issues)
 RUN cd /tmp && git clone https://github.com/frappe/bench \
-    && cd bench && pip3 install -e .
+    && cd bench && pip3 install .
 
 # Create working directory
 RUN mkdir -p /opt/bench
