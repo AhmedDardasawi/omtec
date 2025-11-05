@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install all dependencies in one RUN command to reduce layers
+# Install all dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
     && apt-get install -y nodejs \
-    && wget -O /tmp/wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.focal_amd64.deb \
+    && wget -O /tmp/wkhtmltox.deb "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.focal_amd64.deb" \
     && apt-get install -y /tmp/wkhtmltox.deb \
     && rm /tmp/wkhtmltox.deb \
     && rm -rf /var/lib/apt/lists/*
@@ -43,32 +43,30 @@ WORKDIR /opt/frappe-bench
 # Install ERPNext
 RUN bench get-app erpnext https://github.com/frappe/erpnext --branch version-14
 
-# Create startup script
-RUN cat > /start.sh << 'EOF'
-#!/bin/bash
-cd /opt/frappe-bench
-
-# Wait for database
-echo "Waiting for database..."
-while ! mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -P $DB_PORT -e "SELECT 1;" > /dev/null 2>&1; do
-  sleep 5
-done
-
-# Create site if not exists
-if [ ! -f sites/.initialized ]; then
-  echo "Creating site: $SITE_NAME"
-  bench new-site $SITE_NAME \
-    --mariadb-root-password=$DB_PASSWORD \
-    --admin-password=$ADMIN_PASSWORD \
-    --force
-  bench --site $SITE_NAME install-app erpnext
-  touch sites/.initialized
-  echo "Site created successfully!"
-fi
-
-echo "Starting ERPNext..."
-bench start
-EOF
+# Create startup script using proper syntax
+RUN printf '#!/bin/bash\n\
+cd /opt/frappe-bench\n\
+\n\
+# Wait for database\n\
+echo "Waiting for database..."\n\
+while ! mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -P $DB_PORT -e "SELECT 1;" > /dev/null 2>&1; do\n\
+  sleep 5\n\
+done\n\
+\n\
+# Create site if not exists\n\
+if [ ! -f sites/.initialized ]; then\n\
+  echo "Creating site: $SITE_NAME"\n\
+  bench new-site $SITE_NAME \\\n\
+    --mariadb-root-password=$DB_PASSWORD \\\n\
+    --admin-password=$ADMIN_PASSWORD \\\n\
+    --force\n\
+  bench --site $SITE_NAME install-app erpnext\n\
+  touch sites/.initialized\n\
+  echo "Site created successfully!"\n\
+fi\n\
+\n\
+echo "Starting ERPNext..."\n\
+bench start\n' > /start.sh
 
 RUN chmod +x /start.sh
 
