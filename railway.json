@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "/bin/bash /start.sh",
+    "startCommand": "bash -c 'while ! mysql -h $DB_HOST -u root -p$DB_PASSWORD -e \"SELECT 1;\" >/dev/null 2>&1; do sleep 5; done; [ ! -f /home/frappe/frappe-bench/sites/.initialized ] && bench new-site $SITE_NAME --mariadb-root-password=$DB_PASSWORD --admin-password=$ADMIN_PASSWORD --install-app erpnext --force && touch /home/frappe/frappe-bench/sites/.initialized; bench start'",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
