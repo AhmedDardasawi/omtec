@@ -1,10 +1,8 @@
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    NODE_ENV=production
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
+# Install all dependencies in one RUN command to reduce layers
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -12,21 +10,10 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
-    software-properties-common \
-    gnupg \
-    sudo \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Node.js 20 (LTS)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
-
-# Install additional dependencies
-RUN apt-get update && apt-get install -y \
+    python3-dev \
     mariadb-client \
     libmariadb-dev \
     build-essential \
-    python3-dev \
     libssl-dev \
     libffi-dev \
     libxml2-dev \
@@ -34,39 +21,55 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     zlib1g-dev \
     libfreetype6-dev \
+    sudo \
+    && curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
+    && apt-get install -y nodejs \
+    && wget -O /tmp/wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.focal_amd64.deb \
+    && apt-get install -y /tmp/wkhtmltox.deb \
+    && rm /tmp/wkhtmltox.deb \
     && rm -rf /var/lib/apt/lists/*
 
-# Install wkhtmltopdf
-RUN wget -O /tmp/wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb \
-    && apt-get install -y /tmp/wkhtmltox.deb \
-    && rm /tmp/wkhtmltox.deb
-
-# Create frappe user
-RUN useradd -m -s /bin/bash frappe
-
-# Install bench with specific version for compatibility
-RUN pip3 install frappe-bench==5.15.3
+# Install bench
+RUN pip3 install frappe-bench
 
 # Create app directory
-RUN mkdir -p /home/frappe/bench && chown -R frappe:frappe /home/frappe
-
-# Switch to frappe user
-USER frappe
-WORKDIR /home/frappe/bench
+WORKDIR /opt
 
 # Initialize bench
 RUN bench init frappe-bench --python python3 --skip-assets
 
-WORKDIR /home/frappe/bench/frappe-bench
+WORKDIR /opt/frappe-bench
 
 # Install ERPNext
 RUN bench get-app erpnext https://github.com/frappe/erpnext --branch version-14
 
-# Switch back to root for startup script
-USER root
+# Create startup script
+RUN cat > /start.sh << 'EOF'
+#!/bin/bash
+cd /opt/frappe-bench
 
-# Copy startup script
-COPY start.sh /start.sh
+# Wait for database
+echo "Waiting for database..."
+while ! mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -P $DB_PORT -e "SELECT 1;" > /dev/null 2>&1; do
+  sleep 5
+done
+
+# Create site if not exists
+if [ ! -f sites/.initialized ]; then
+  echo "Creating site: $SITE_NAME"
+  bench new-site $SITE_NAME \
+    --mariadb-root-password=$DB_PASSWORD \
+    --admin-password=$ADMIN_PASSWORD \
+    --force
+  bench --site $SITE_NAME install-app erpnext
+  touch sites/.initialized
+  echo "Site created successfully!"
+fi
+
+echo "Starting ERPNext..."
+bench start
+EOF
+
 RUN chmod +x /start.sh
 
 EXPOSE 8000 9000
