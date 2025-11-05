@@ -29,8 +29,16 @@ RUN apt-get update && apt-get install -y \
     && rm /tmp/wkhtmltox.deb \
     && rm -rf /var/lib/apt/lists/*
 
-# Install bench with specific version
-RUN pip3 install frappe-bench==5.15.3
+# Install compatible versions
+RUN pip3 install \
+    click==8.1.7 \
+    requests==2.31.0 \
+    jinja2==3.1.2 \
+    honcho==1.1.0 \
+    semantic-version==2.10.0
+
+# Install available version of frappe-bench
+RUN pip3 install frappe-bench==5.22.8
 
 # Create app directory
 WORKDIR /opt
