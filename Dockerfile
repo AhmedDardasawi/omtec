@@ -38,9 +38,8 @@ RUN pip3 install \
     GitPython==3.1.40 \
     setuptools==65.5.0
 
-# Install frappe-bench from GitHub directly (bypass pip version issues)
-RUN cd /tmp && git clone https://github.com/frappe/bench \
-    && cd bench && pip3 install .
+# Now install frappe-bench without dependency resolution
+RUN pip3 install --no-deps frappe-bench==5.22.8
 
 # Create working directory
 RUN mkdir -p /opt/bench
