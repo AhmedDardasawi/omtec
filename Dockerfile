@@ -29,8 +29,8 @@ RUN apt-get update && apt-get install -y \
     && rm /tmp/wkhtmltox.deb \
     && rm -rf /var/lib/apt/lists/*
 
-# Install bench
-RUN pip3 install frappe-bench
+# Install bench with specific version
+RUN pip3 install frappe-bench==5.15.3
 
 # Create app directory
 WORKDIR /opt
@@ -43,7 +43,7 @@ WORKDIR /opt/frappe-bench
 # Install ERPNext
 RUN bench get-app erpnext https://github.com/frappe/erpnext --branch version-14
 
-# Create startup script using proper syntax
+# Create startup script
 RUN printf '#!/bin/bash\n\
 cd /opt/frappe-bench\n\
 \n\
