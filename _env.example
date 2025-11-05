@@ -1,14 +1,4 @@
-# Database Settings
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=123456
-
-# ERPNext Settings
-SITE_NAME=erp.example.com
-ADMIN_PASSWORD=admin123
-INSTALL_APPS=erpnext
-
-# Railway Specific
-RAILWAY_STATIC_URL=your-app-name.railway.app
-RAILWAY_GIT_COMMIT_SHA=latest
+DB_HOST=your-mysql-host.railway.internal
+DB_PASSWORD=your-mysql-password
+SITE_NAME=your-app-name.railway.app
+ADMIN_PASSWORD=your-secure-password
