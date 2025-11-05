@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     NODE_ENV=production
 
-# تثبيت dependencies الأساسية
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -17,11 +17,11 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && rm -rf /var/lib/apt/lists/*
 
-# تثبيت Node.js 18
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+# Install Node.js 20 (LTS)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs
 
-# تثبيت dependencies إضافية
+# Install additional dependencies
 RUN apt-get update && apt-get install -y \
     mariadb-client \
     libmariadb-dev \
@@ -36,36 +36,36 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# تثبيت wkhtmltopdf
+# Install wkhtmltopdf
 RUN wget -O /tmp/wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb \
     && apt-get install -y /tmp/wkhtmltox.deb \
     && rm /tmp/wkhtmltox.deb
 
-# إنشاء مستخدم frappe
+# Create frappe user
 RUN useradd -m -s /bin/bash frappe
 
-# تثبيت bench
-RUN pip3 install frappe-bench
+# Install bench with specific version for compatibility
+RUN pip3 install frappe-bench==5.15.3
 
-# إنشاء مجلد العمل
+# Create app directory
 RUN mkdir -p /home/frappe/bench && chown -R frappe:frappe /home/frappe
 
-# التبديل إلى مستخدم frappe
+# Switch to frappe user
 USER frappe
 WORKDIR /home/frappe/bench
 
-# تهيئة bench
+# Initialize bench
 RUN bench init frappe-bench --python python3 --skip-assets
 
 WORKDIR /home/frappe/bench/frappe-bench
 
-# تثبيت ERPNext
+# Install ERPNext
 RUN bench get-app erpnext https://github.com/frappe/erpnext --branch version-14
 
-# العودة إلى root لإنشاء سكريبت التشغيل
+# Switch back to root for startup script
 USER root
 
-# نسخ سكريبت التشغيل
+# Copy startup script
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
